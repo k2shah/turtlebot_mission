@@ -20,7 +20,9 @@ class Controller:
         self.path_tresh= .1 #dist to target the next wp
         self.spin_gain = 1
 
-        rospy.Subscriber('/turtlebot_controller/position_goal', Float32MultiArray, self.getGoal)
+        rospy.Subscriber('/turtlebot_controller/position_goal_override', Float32MultiArray, self.getGoal)
+        rospy.Subscriber('/turtlebot_controller/path_goal', Path, self.updatePath)
+
 
         self.x = 0.0
         self.y = 0.0
@@ -35,9 +37,11 @@ class Controller:
 
         #todo: add inital angle alignment to reduce path arcs. 
 
+    def 
+
     def getGoal(self, msg):
         #get paths from navi
-        self.path=msg.data
+        self.x_g, self.y_g, self.th_g =msg.data
 
         
     def get_ctrl_output(self):
