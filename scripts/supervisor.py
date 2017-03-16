@@ -13,6 +13,10 @@ def pose_to_xyth(pose):
                                                    pose.orientation.w))[2]
     return [pose.position.x, pose.position.y, th]
 
+def wrapToPi(a):
+    if isinstance(a, list):    # backwards compatibility for lists (distinct from np.array)
+        return [(x + np.pi) % (2*np.pi) - np.pi for x in a]
+    return (a + np.pi) % (2*np.pi) - np.pi
 
 class Supervisor:
 
@@ -62,7 +66,7 @@ class Supervisor:
     def fsm_cmd_callback(self, msg):
         self.curr_cmd = msg.data
         if self.curr_cmd == "SPIN" or self.curr_cmd[0:6] == "ROTATE":
-            self.cmd_angle = float(msg.data[7:])
+            self.cmd_angle = wrapToPi( float(msg.data[7:]) )
 
     def update_waypoints(self):
         for tag_number in self.all_tag_numbers:
@@ -84,6 +88,7 @@ class Supervisor:
             (translation,rotation) = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
             euler = tf.transformations.euler_from_quaternion(rotation)
             self.pose = [translation[0], translation[1], euler[2]]
+            #self.pose[2] = wrapToPi(self.pose[2])
         except:
             pass
 
@@ -99,7 +104,7 @@ class Supervisor:
 
 
     def run(self):
-        rate = rospy.Rate(1) # 1 Hz, change this to whatever you like
+        rate = rospy.Rate(10) # 1 Hz, change this to whatever you like
         while not rospy.is_shutdown():
             self.update_waypoints()
 
@@ -108,10 +113,7 @@ class Supervisor:
 
             # broadcast information
             self.get_current_pose()
-            if self.pose is None:
-                data = 'waypoint_locations: %s\nFSM state: %s' %(self.waypoint_locations,self.state)
-            else:
-                data = 'waypoint_locations: %s\nFSM state: %s\ncurrent pose: [%0.2f,%0.2f,%0.2f]' %(self.pose[0],self.pose[1],self.pose[2],self.state,self.waypoint_locations)
+            data = 'waypoint_locations: %s\nFSM state: %s\ncurrent pose: %s' %(self.waypoint_locations,self.state,self.pose)
             self.verbose_pub.publish(data)
 
             # starting state
@@ -138,7 +140,8 @@ class Supervisor:
 
                 self.override_pub.publish(data)
 
-                if abs(self.pose[2] - self.start_angle) < 5:
+                # check if near desired angle
+                if abs(self.pose[2] - (self.start_angle+self.cmd_angle)) < 5:
                     data = Float32MultiArray()
                     data.data = [0, 0, 0] # revert to autonomous mode
                     self.override_pub.publish(data)
