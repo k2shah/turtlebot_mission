@@ -36,7 +36,7 @@ class CaptianControl:
     my_nav_goal.data = self.my_nav_goal
     nav_goal_updated = False
     try:
-      print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
+      rospy.loginfo('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
       print('Hit me with it') # input() no good, cant deal w/ letters w/o quotes
       k_msg = raw_input() # output is type String
       comma_ind = k_msg.find(',')
@@ -45,7 +45,7 @@ class CaptianControl:
           if(  'h' == k_msg):
             self.printCommandList()
           elif('v'==k_msg):
-            print 'verbose message: %s' %self.verbose_message
+            rospy.loginfo('\nverbose message: \n%s',self.verbose_message)
             self.printNavGoal()
           elif('d'==k_msg):
             self.cmd = 'MOTORS_DISABLED'
@@ -60,7 +60,7 @@ class CaptianControl:
             self.cmd = 'SPIN'
             send_cmd = True
           elif('r'==k_msg):
-            print('Enter amount to rotate (degrees)')
+            rospy.loginfo('\nEnter amount to rotate (degrees)')
             ang = self.readSingleChar()
             if( (ang != self.err_state) and (ang>-360) and (ang < 360) ):
               self.cmd = 'ROTATE_%.2f' %ang
@@ -68,21 +68,21 @@ class CaptianControl:
             else:
               send_cmd = False
           elif('x'==k_msg):
-            print('Enter new desired x')
+            rospy.loginfo('\nEnter new desired x')
             x_goal = self.readSingleChar()
             if(x_goal != self.err_state):
               my_nav_goal.data[0] = x_goal
               nav_goal_updated = True
           elif('y'==k_msg):
-            print('Enter new desired y')
+            rospy.loginfo('\nEnter new desired y')
             y_goal = self.readSingleChar()
             if(y_goal != self.err_state):
               my_nav_goal.data[1] = y_goal
               nav_goal_updated = True
           elif('t'==k_msg):
-            print('Enter new desired theta (degrees)')
+            rospy.loginfo('\nEnter new desired theta (degrees)')
             t_goal = self.readSingleChar()
-            if(t_goal != self.err_state and (t_goal>-360) and (t_goal < 360) ):
+            if(t_goal != self.err_state and (t_goal>0) and (t_goal < 360) ):
               my_nav_goal.data[2] = t_goal
               nav_goal_updated = True
           else:
@@ -100,7 +100,7 @@ class CaptianControl:
               t_s = y_s[(t_ind+1):]
               y_s = k_msg[(comma_ind+1):(comma_ind+1+t_ind)]
               t_goal = float(t_s)
-            if( (t_goal>-360) and (t_goal < 360) ):
+            if( (t_goal>0) and (t_goal < 360) ):
               x_goal = float(x_s); y_goal = float(y_s)
               my_nav_goal.data[0] = x_goal
               my_nav_goal.data[1] = y_goal
@@ -116,7 +116,7 @@ class CaptianControl:
       self.printNavGoal()
 
     if(send_cmd and (self.cmd != '') ):
-      print 'SENDING: %s' %self.cmd
+      rospy.loginfo('\nSENDING: %s', self.cmd)
       self.cmd_pub.publish(self.cmd)
 
   def readSingleChar(self):
@@ -131,21 +131,21 @@ class CaptianControl:
     self.verbose_message = msg.data
 
   def printNavGoal(self):
-    print('nav_goal = [%.2f, %.2f, %.2f]' %(self.my_nav_goal[0],self.my_nav_goal[1],self.my_nav_goal[2]))
+    rospy.loginfo('\nnav_goal = [%.2f, %.2f, %.2f]',self.my_nav_goal[0],self.my_nav_goal[1],self.my_nav_goal[2])
 
   def printCommandList(self):
-    print('Commands:\n\t(h) <==> display command list again')
-    print('\t(v) <==> print latest verbose message')
-    print('\t(d) <==> disable motors')
-    print('\t(a) <==> switch to explore mode (manual waypoints)')
-    print('\t(z) <==> switch to exploit mode (autonomous waypoints)')
-    print('\t(#,#) <==> set desired x,y coordinate')
-    print('\t(#,#,#) <==> set desired x,y,theta coordinate (theta in degrees)')
-    print('\t(s) <==> spin in full circle')
-    print('\t(r) <==> rotate theta degrees (can be <0))')
-    print('\t(x) <==> prompt for desired x coordinate')
-    print('\t(y) <==> prompt for desired y coordinate')
-    print('\t(t) <==> prompt for desired theta (in degrees)\n')
+    rospy.loginfo('\nCommands:\n\t(h) <==> display command list again\n\
+      \t(v) <==> print latest verbose message\n\
+      \t(d) <==> disable motors\n\
+      \t(a) <==> switch to explore mode (manual waypoints)\n\
+      \t(z) <==> switch to exploit mode (autonomous waypoints)\n\
+      \t(#,#) <==> set desired x,y coordinate\n\
+      \t(#,#,#) <==> set desired x,y,theta coordinate (theta in degrees)\n\
+      \t(s) <==> spin in full circle\n\
+      \t(r) <==> rotate theta degrees (can be <0))\n\
+      \t(x) <==> prompt for desired x coordinate\n\
+      \t(y) <==> prompt for desired y coordinate\n\
+      \t(t) <==> prompt for desired theta (in degrees)\n')
 
   def run(self):
     rate = rospy.Rate(10) # 10 Hz
