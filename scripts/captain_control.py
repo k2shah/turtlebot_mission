@@ -8,30 +8,45 @@ class CaptianControl:
 
   def __init__(self):
     rospy.init_node('turtlebot_captain', anonymous=True)
+    # topic with commands sent to the FSM (e.g. spin in place, disable motor, etc)
     self.cmd_pub = rospy.Publisher('/turtlebot_mission/fsm_command', String, queue_size=10)
+
+    # topic where goal state for autonomous explore mode
     self.nav_goal_pub = rospy.Publisher('/turtlebot_mission/nav_goal', Float32MultiArray, queue_size=10)
+
+    # topic to recieve messages from FSM to print (for debug/info)
+    self.verbose_sub = rospy.Subscriber('/turtlebot_mission/verbose', String, self.verboseListener)
+
+    self.verbose_message = ''
     self.err_state = -10**4
     self.cmd = ''
     self.my_nav_goal = np.zeros(3)*1.0
 
+# This is the main loop of the node. Node will wait until user hits enter. Actions are taken for certain input. 
+#     For valid inputs, see the printCommandList(self) function. Invalid inputs will be ignored. Messages are
+#     only sent when the user hits enter, otherwise raw_input() call is blocking.
+# 
+# General logic: if no comma, must be single letter command (if not, ignore). If not a recognized letter, ignore.
+#     if more than 2 commas, ignore. If 1 or 2 commas, parse into #,# or #,#,#. Try/Except to catch if any casts
+#     from string to floats fail (if failure, ignore).
   def loop(self):
     send_cmd = False
     self.cmd = ''
     my_nav_goal = Float32MultiArray()
     my_nav_goal.data = self.my_nav_goal
+    nav_goal_updated = False
     try:
-      print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
-      print('Hit me with it') # input() no good, cant deal w/ straight letters w/o quotes
-      k_msg = raw_input() # output is a string
+      print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
+      print('Hit me with it') # input() no good, cant deal w/ letters w/o quotes
+      k_msg = raw_input() # output is type String
       comma_ind = k_msg.find(',')
       if(comma_ind == -1): # no comma - check if one of our commands
-        if(len(k_msg)==1):
-          # print 'I\'m hearing: %s\n' %k_msg  
-          if(  'h'==k_msg):
+        if(len(k_msg)==1): 
+          if(  'h' == k_msg):
             self.printCommandList()
-          elif('e'==k_msg):
-            self.cmd = 'MOTORS_ENABLED'
-            send_cmd = True
+          elif('p'==k_msg):
+            self.printNavGoal()
+            print self.verbose_message
           elif('d'==k_msg):
             self.cmd = 'MOTORS_DISABLED'
             send_cmd = True
@@ -47,7 +62,7 @@ class CaptianControl:
           elif('r'==k_msg):
             print('Enter amount to rotate (degrees)')
             ang = self.readSingleChar()
-            if(ang != self.err_state):
+            if( (ang != self.err_state) and (ang>-360) and (ang < 360) ):
               self.cmd = 'ROTATE_%.2f' %ang
               send_cmd = True
             else:
@@ -57,44 +72,49 @@ class CaptianControl:
             x_goal = self.readSingleChar()
             if(x_goal != self.err_state):
               my_nav_goal.data[0] = x_goal
-            else:
-              send_cmd = False
+              nav_goal_updated = True
           elif('y'==k_msg):
             print('Enter new desired y')
             y_goal = self.readSingleChar()
             if(y_goal != self.err_state):
               my_nav_goal.data[1] = y_goal
-            else:
-              send_cmd = False
+              nav_goal_updated = True
           elif('t'==k_msg):
             print('Enter new desired theta (degrees)')
             t_goal = self.readSingleChar()
-            if(t_goal != self.err_state):
+            if(t_goal != self.err_state and (t_goal>-360) and (t_goal < 360) ):
               my_nav_goal.data[2] = t_goal
-            else:
-              send_cmd = False
+              nav_goal_updated = True
           else:
             send_cmd = False
         else:
           send_cmd = False
       else: # has at least 1 comma
-        x_s = k_msg[:comma_ind]
-        y_s = k_msg[(comma_ind+1):]
-        if( (',' in x_s) or (',' in y_s)): # too many commas
-          send_cmd = False
-        else:
+        if(k_msg.count(',')<=2): # 3 or more = too many commas
+          x_s = k_msg[:comma_ind]
+          y_s = k_msg[(comma_ind+1):]
+          t_ind = y_s.find(',')
           try:
-            x_goal = float(x_s); y_goal = float(y_s)
-            my_nav_goal.data[0] = x_goal
-            my_nav_goal.data[1] = y_goal
-          except ValueError:
-            send_cmd = False
+            t_goal = my_nav_goal.data[2]
+            if(t_ind>=0):
+              t_s = y_s[(t_ind+1):]
+              y_s = k_msg[(comma_ind+1):(comma_ind+1+t_ind)]
+              t_goal = float(t_s)
+            if( (t_goal>-360) and (t_goal < 360) ):
+              x_goal = float(x_s); y_goal = float(y_s)
+              my_nav_goal.data[0] = x_goal
+              my_nav_goal.data[1] = y_goal
+              my_nav_goal.data[2] = t_goal
+              nav_goal_updated = True
+          except ValueError: pass
     except NameError: 
       send_cmd = False
 
-    print('nav_goal = [%.2f, %.2f, %.2f]' %(my_nav_goal.data[0],my_nav_goal.data[1],my_nav_goal.data[2]))
-    self.nav_goal_pub.publish(my_nav_goal)
-    self.my_nav_goal = my_nav_goal.data
+    if(nav_goal_updated):
+      self.nav_goal_pub.publish(my_nav_goal)
+      self.my_nav_goal = my_nav_goal.data
+      self.printNavGoal()
+
     if(send_cmd and (self.cmd != '') ):
       print 'SENDING: %s' %self.cmd
       self.cmd_pub.publish(self.cmd)
@@ -107,18 +127,25 @@ class CaptianControl:
     except ValueError: pass
     return f
 
+  def verboseListener(self, msg):
+    self.verbose_message = msg.data
+
+  def printNavGoal(self):
+    print('nav_goal = [%.2f, %.2f, %.2f]' %(self.my_nav_goal[0],self.my_nav_goal[1],self.my_nav_goal[2]))
+
   def printCommandList(self):
     print('Commands:\n\t(h) <==> display command list again')
-    print('\t(e) <==> enable motors')
+    print('\t(v) <==> print latest verbose message')
     print('\t(d) <==> disable motors')
     print('\t(a) <==> switch to explore mode (manual waypoints)')
     print('\t(z) <==> switch to exploit mode (autonomous waypoints)')
     print('\t(#,#) <==> set desired x,y coordinate')
+    print('\t(#,#,#) <==> set desired x,y,theta coordinate (theta in degrees)')
     print('\t(s) <==> spin in full circle')
     print('\t(r) <==> rotate theta degrees (can be <0))')
     print('\t(x) <==> prompt for desired x coordinate')
     print('\t(y) <==> prompt for desired y coordinate')
-    print('\t(t) <==> prompt for desired theta (in degrees)')
+    print('\t(t) <==> prompt for desired theta (in degrees)\n')
 
   def run(self):
     rate = rospy.Rate(10) # 10 Hz
