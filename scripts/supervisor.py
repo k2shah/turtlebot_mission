@@ -36,7 +36,7 @@ class Supervisor:
 
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
-        self.waypoint_offset.pose.position.z = .4    # waypoint is located 40cm in front of the AprilTag, facing it
+        self.waypoint_offset.pose.position.z = 0.4    # waypoint is located 40cm in front of the AprilTag, facing it
         quat = tf.transformations.quaternion_from_euler(0., np.pi/2, np.pi/2)
         self.waypoint_offset.pose.orientation.x = quat[0]
         self.waypoint_offset.pose.orientation.y = quat[1]
@@ -45,13 +45,12 @@ class Supervisor:
 
         self.all_tag_numbers = range(7)
 
-        # Changes by adam ##########
+        # information for autonomously visiting tags in order specified by mission
         self.nav_goal_exploit_pub = rospy.Publisher('/turtlebot_mission/nav_goal_exploit', Float32MultiArray, queue_size=10)
-        self.mission_goal_sub = rospy.Subscriber('/mission', Int32MultiArray, self.setTagVisitOrderCallback)
+        self.mission_goal_sub = rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
         self.tag_visit_order = None 
-        self.tag_dist_thresh = 0.4;
-        self.num_tags_visited = -1
-        ############################
+        self.tag_dist_thresh = 0.4
+        self.num_tags_visited = None
 
         # 0: initialization state
         # 1: human-directed exploration
@@ -67,9 +66,10 @@ class Supervisor:
         # pose information of robot
         self.pose = None
         self.start_angle = None # work around for rotation commands
+        self.angle_tol = 3
 
 
-    def setTagVisitOrderCallback(self,data):
+    def mission_callback(self,data):
         self.tag_visit_order = data.data
 
     def rviz_goal_callback(self, msg):
@@ -79,9 +79,9 @@ class Supervisor:
     def fsm_cmd_callback(self, msg):
         self.curr_cmd = msg.data
         if self.curr_cmd == "SPIN":
-            self.cmd_angle = 0.0
+            self.cmd_angle = 2*np.pi - (self.angle_tol*np.pi/180)
         elif self.curr_cmd[0:6] == "ROTATE":
-            self.cmd_angle = wrapToPi( (np.pi/180)*float(msg.data[7:]) )
+            self.cmd_angle = float(msg.data[7:])
 
     def update_waypoints(self):
         for tag_number in self.all_tag_numbers:
@@ -103,7 +103,8 @@ class Supervisor:
             (translation,rotation) = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
             euler = tf.transformations.euler_from_quaternion(rotation)
             self.pose = [translation[0], translation[1], euler[2]]
-            #self.pose[2] = wrapToPi(self.pose[2])
+            if self.pose[2] < 0:
+                self.pose[2] += 2*np.pi
         except:
             pass
 
@@ -112,6 +113,11 @@ class Supervisor:
             self.state = "disabled"
 
         elif self.curr_cmd == "EXPLOIT_MODE":
+            if self.tag_visit_order is None:
+                rospy.logwarn('self.tag_visit_order is None, stopping robot')
+                data = Float32MultiArray()
+                data.data = [1, 0, 0] # override mode
+                self.override_pub.publish(data)
             self.state = "exploit"
 
         elif self.curr_cmd == "EXPLORE_MODE":
@@ -128,7 +134,7 @@ class Supervisor:
 
             # broadcast information
             self.get_current_pose()
-            data = 'waypoint_locations: %s\nFSM state: %s\ncurrent pose: %s' %(self.waypoint_locations,self.state,self.pose)
+            data = 'waypoints found: %s\nFSM state: %s\ncurrent pose: %s' %(self.waypoint_locations.keys(),self.state,self.pose)
             self.verbose_pub.publish(data)
 
             # starting state
@@ -141,58 +147,55 @@ class Supervisor:
                 data.data = [0, 0, 0] # revert to autonomous mode
                 self.override_pub.publish(data)
 
-                if self.curr_cmd[0:6] == "ROTATE" and self.pose is not None:
+                if self.curr_cmd[0:6] == "ROTATE" or self.curr_cmd == "SPIN" and self.pose is not None:
                     self.start_angle = self.pose[2]
                     self.state = "explore_rotate"
 
             elif self.state == "explore_rotate":
                 if self.cmd_angle < 0:
                     data = Float32MultiArray()
-                    data.data = [1, 0, -0.5] # spin clockwise
+                    data.data = [1, 0, -1] # spin clockwise
                 else:
                     data = Float32MultiArray()
-                    data.data = [1, 0, 0.5] # spin anti-clockwise
+                    data.data = [1, 0, 1] # spin anti-clockwise
 
                 self.override_pub.publish(data)
 
                 # check if near desired angle
-                if abs(self.pose[2] - (self.start_angle+self.cmd_angle)) < 5:
+                location = self.start_angle+self.cmd_angle
+                if location < 0:
+                    location += 2*np.pi
+                if location > 2*np.pi:
+                    location -= 2*np.pi
+
+                error = self.pose[2] - location                
+                if abs(error) < (self.angle_tol*np.pi/180):
                     data = Float32MultiArray()
                     data.data = [0, 0, 0] # revert to autonomous mode
                     self.override_pub.publish(data)
                     self.state = "explore"
+                    self.curr_cmd = ""
 
             # autonomous way-point following
             elif self.state == "exploit":
-                # not sure how to implement this
 
-                # added by adam ##################################
-
-                if(self.tag_visit_order is None):
-                    rospy.logwarn('self.tag_visit_order is None, commanding robot to be still')
-                    data = Float32MultiArray()
-                    data.data = [1, 0, 0] # override mode
-                    self.override_pub.publish(data)
-                else:
-                    if(self.num_tags_visited==-1): # first publish
-                        self.num_tags_visited = 0
-                        self.current_target_tag = self.tag_visit_order[0]
-                        wp_loc = self.waypoint_locations[self.current_target_tag]
-                        data = Float32MultiArray()
-                        data.data = np.array([wp_loc[0], wp_loc[1], 0])
-                        self.nav_goal_exploit_pub.publish(data)
-
+                if self.num_tags_visited is None: # first publish
+                    self.num_tags_visited = 0
+                    self.current_target_tag = self.tag_visit_order[self.num_tags_visited]
                     wp_loc = self.waypoint_locations[self.current_target_tag]
-                    dist_to_point = sqrt((self.pose[0]-wp_loc[0])**2 + (self.pose[1]-wp_loc[1])**2)**0.5
-                    if(dist_to_point <= self.tag_dist_thresh) # we are at the tag location, send next target!
-                        self.num_tags_visited += 1
-                        self.current_target_tag = self.tag_visit_order[self.num_tags_visited]
-                        wp_loc = self.waypoint_locations[self.current_target_tag]
-                        data = Float32MultiArray()
-                        data.data = np.array([wp_loc[0], wp_loc[1], 0])
-                        self.nav_goal_exploit_pub.publish(data)
-                ###################################################
-                pass                
+                    data = Float32MultiArray()
+                    data.data = np.array([wp_loc[0], wp_loc[1], 0]) # update the angle here later
+                    self.nav_goal_exploit_pub.publish(data)
+
+                wp_loc = self.waypoint_locations[self.current_target_tag]
+                dist_to_point = sqrt((self.pose[0]-wp_loc[0])**2 + (self.pose[1]-wp_loc[1])**2)**0.5
+                if dist_to_point <= self.tag_dist_thresh: # we are at the tag location, send next target!
+                    self.num_tags_visited += 1
+                    self.current_target_tag = self.tag_visit_order[self.num_tags_visited]
+                    wp_loc = self.waypoint_locations[self.current_target_tag]
+                    data = Float32MultiArray()
+                    data.data = np.array([wp_loc[0], wp_loc[1], 0]) # update the angle here later
+                    self.nav_goal_exploit_pub.publish(data)
 
             # disabled motors
             elif self.state == "disabled":
