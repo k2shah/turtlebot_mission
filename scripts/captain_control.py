@@ -29,6 +29,9 @@ class CaptianControl:
 # General logic: if no comma, must be single letter command (if not, ignore). If not a recognized letter, ignore.
 #     if more than 2 commas, ignore. If 1 or 2 commas, parse into #,# or #,#,#. Try/Except to catch if any casts
 #     from string to floats fail (if failure, ignore).
+# 
+# NOTE: all angles published/stored are in radians, but input/display are in degrees
+# 
   def loop(self):
     send_cmd = False
     self.cmd = ''
@@ -83,7 +86,7 @@ class CaptianControl:
             print('\nEnter new desired theta (degrees)')
             t_goal = self.readSingleChar()
             if(t_goal != self.err_state and (t_goal>=0) and (t_goal < 360) ):
-              my_nav_goal.data[2] = t_goal
+              my_nav_goal.data[2] = t_goal*np.pi/180
               nav_goal_updated = True
           else:
             send_cmd = False
@@ -104,7 +107,7 @@ class CaptianControl:
                 x_goal = float(x_s); y_goal = float(y_s)
                 my_nav_goal.data[0] = x_goal
                 my_nav_goal.data[1] = y_goal
-                my_nav_goal.data[2] = t_goal
+                my_nav_goal.data[2] = t_goal*np.pi/180
                 nav_goal_updated = True
             else:# This means we have just x,y
                 x_goal = float(x_s); y_goal = float(y_s)
@@ -136,7 +139,7 @@ class CaptianControl:
     self.verbose_message = msg.data
 
   def printNavGoal(self):
-    print('\nnav_goal = [%.2f, %.2f, %.2f]' %(self.my_nav_goal[0],self.my_nav_goal[1],self.my_nav_goal[2]))
+    print('\nnav_goal = [%.2f, %.2f, %.2f]' %(self.my_nav_goal[0],self.my_nav_goal[1],self.my_nav_goal[2]*180/np.pi))
 
   def printCommandList(self):
     print('\nCommands:\n\t(h) <==> display command list again\n\
