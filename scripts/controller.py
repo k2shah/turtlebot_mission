@@ -23,7 +23,7 @@ class Controller:
         self.spin_rate =2
 
         # CHANGE TO MISSION WHEN JAMES IS DONE  
-        rospy.Subscriber('/turtlebot_controller/path_goal', Path, self.updatePath)
+        rospy.Subscriber('/turtlebot_mission/path_goal', Path, self.updatePath)
         rospy.Subscriber('/turtlebot_mission/override', Float32MultiArray, self.override)
 
 
@@ -36,6 +36,7 @@ class Controller:
         self.th_g=0.0
 
         self.path=[]
+        self.taskComplete=False
         #self.path=[[0.0, 1.0, np.pi/2], [2.0, 1.0, 0.0], [2.0, 0.0, -np.pi/2], [3.0, 0.0, 0.0]  ]  #test path
 
 
@@ -117,13 +118,12 @@ class Controller:
         
         if  p<self.path_tresh: #get get point if close
             if len(self.path)==0 :
-                cmd.linear.x=0
-                cmd.angular.z= 0 #shut everything down
+                cmd.linear.x=0 #shut speed down
+                cmd.angular.z= self.spin_gain*(th_g-th) #P control to angle
                 return cmd
-
             else:
                 self.x_g, self.y_g, self.th_g= self.pathParse()
-                rospy.loginfo("going to new waypoint %f, %f, $%F",          
+                rospy.loginfo("Waypoint Update: %f, %f, %f",          
                                                     self.x_g, self.y_g, self.th_g)
 
         #unpack pose
@@ -144,9 +144,9 @@ class Controller:
 
         #control law
         
-        k1=.5
+        k1=.8
         if p< self.path_tresh*2:
-            k1=.7 #keep from slowing towards the end
+            k1=1 #keep from slowing towards the end
         k2=.8
         k3=.8
 
