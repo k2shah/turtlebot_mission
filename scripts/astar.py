@@ -25,6 +25,8 @@ class AStar(object):
         self.open_set.append(x_init)
         self.g_score[x_init] = 0
         self.f_score[x_init] = self.distance(x_init,x_goal)
+        self.goal_thresh = 0.01
+
 
         self.path = None        # the final path as a list of states
 
@@ -118,7 +120,7 @@ class AStar(object):
     def solve(self):
         while len(self.open_set)>0:
             _, xc=min([(self.f_score[node], node) for node in self.open_set ])
-            if xc==self.x_goal: #check if done 
+            if norm(xc-self.x_goal)<self.goal_thresh: #check if done 
                 #print("found path")
                 self.path= self.reconstruct_path() #return path 
                 return True
@@ -139,34 +141,6 @@ class AStar(object):
                 self.g_score[xn]= g_temp
                 self.f_score[xn]= g_temp + self.distance(xn, self.x_goal)
         return False #failure 
-
-# A 2D state space grid with a set of rectangular obstacles. The grid is fully deterministic
-class DetOccupancyGrid2D(object):
-    def __init__(self, width, height, obstacles):
-        self.width = width
-        self.height = height
-        self.obstacles = obstacles
-
-    def is_free(self, x):
-        for obs in self.obstacles:
-            inside = True
-            for dim in range(len(x)):
-                if x[dim] < obs[0][dim] or x[dim] > obs[1][dim]:
-                    inside = False
-                    break
-            if inside:
-                return False
-        return True
-
-    def plot(self, fig_num=0):
-        fig = plt.figure(fig_num)
-        for obs in self.obstacles:
-            ax = fig.add_subplot(111, aspect='equal')
-            ax.add_patch(
-            patches.Rectangle(
-            obs[0],
-            obs[1][0]-obs[0][0],
-            obs[1][1]-obs[0][1],))
 
 # A 2D state space grid with a set of rectangular obstacles. The grid is fully deterministic
 class DetOccupancyGrid2D(object):

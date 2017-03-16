@@ -96,7 +96,7 @@ class Navigator:
             state_min = (-int(round(self.plan_horizon)), -int(round(self.plan_horizon)))
             state_max = (int(round(self.plan_horizon)), int(round(self.plan_horizon)))
             x_init = (int(round(robot_translation[0])), int(round(robot_translation[1])))
-            x_goal = (int(round(self.nav_sp[0])), int(round(self.nav_sp[1])))
+            x_goal = ((round(self.nav_sp[0]*self.plan_resolution))/self.plan_resolution, round(self.nav_sp[1]*self.plan_resolution)/self.plan_resolution)
             astar = AStar(state_min,state_max,x_init,x_goal,self.occupancy,self.plan_resolution)
 
             rospy.loginfo("Computing Navigation Plan")
