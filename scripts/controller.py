@@ -21,7 +21,7 @@ class Controller:
         self.path_tresh= .1 #dist to target the next wp
         self.spin_gain = 1
 
-        rospy.Subscriber('/turtlebot_controller/position_goal_override', Float32MultiArray, self.getGoal)
+        # CHANGE TO MISSION WHEN JAMES IS DONE  
         rospy.Subscriber('/turtlebot_controller/path_goal', Path, self.updatePath)
 
 
@@ -33,12 +33,14 @@ class Controller:
         self.y_g=0.0
         self.th_g=0.0
 
-        self.path=[[0.0, 1.0, np.pi/2], [2.0, 1.0, 0.0], [2.0, 0.0, -np.pi/2], [3.0, 0.0, 0.0]  ]  #test path
+        self.path=[]
+        #self.path=[[0.0, 1.0, np.pi/2], [2.0, 1.0, 0.0], [2.0, 0.0, -np.pi/2], [3.0, 0.0, 0.0]  ]  #test path
 
 
         #todo: add inital angle alignment to reduce path arcs. 
 
     def updatePath(self, msg):
+        #print("updated path\n")
         self.path=[ps.pose for ps in msg.poses] #list of pose obected, pre parased from PATH and POSE STAMMPED
 
     def getGoal(self, msg):
@@ -47,8 +49,14 @@ class Controller:
 
     def pathParse(self):
         pose=self.path.pop(0)
-        print(pose)
-        euler = tf.transformations.euler_from_quaternion(pose.orientation)
+        #unpack and convert to euler
+        quaternion = (
+            pose.orientation.x,
+            pose.orientation.y,
+            pose.orientation.z,
+            pose.orientation.w)
+        euler = tf.transformations.euler_from_quaternion(quaternion)
+        #return reduced pose
         return pose.position.x, pose.position.y, euler[2]
 
 
@@ -142,6 +150,7 @@ class Controller:
         # end of what you need to modify
         cmd.linear.x = cmd_x_dot
         cmd.angular.z = cmd_theta_dot
+        print(cmd)
         self.targetLock=True
         return cmd
 
@@ -151,7 +160,7 @@ class Controller:
             ctrl_output = self.get_ctrl_output()
             
             #### THIS MAKES IT MOVE
-            #self.pub.publish(ctrl_output)
+            self.pub.publish(ctrl_output)
             ####
 
             rate.sleep()
