@@ -190,7 +190,7 @@ class Controller:
         return cmd
 
 
-    def override_output():
+    def override_output(self):
         cmd = Twist()
         cmd.linear.x = self.cmd_V
         cmd.angular.z = self.cmd_w
