@@ -15,7 +15,7 @@ class Navigator:
     def __init__(self):
         rospy.init_node('turtlebot_navigator', anonymous=True)
 
-        self.plan_resolution = 0.25
+        self.plan_resolution = 0.125
         self.plan_horizon = 10
 
         self.map_width = 0
@@ -31,7 +31,7 @@ class Navigator:
 
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("map_metadata", MapMetaData, self.map_md_callback)
-        rospy.Subscriber("/turtlebot_mission/nav_goal", Float32MultiArray, self.nav_sp_callback)
+        rospy.Subscriber("/turtlebot_mission/nav_goal_explore", Float32MultiArray, self.nav_sp_callback)
 
         self.pose_sp_pub = rospy.Publisher('/turtlebot_mission/position_goal', Float32MultiArray, queue_size=10)
         self.nav_path_pub = rospy.Publisher('/turtlebot_mission/path_goal', Path, queue_size=10)
@@ -100,8 +100,9 @@ class Navigator:
             astar = AStar(state_min,state_max,x_init,x_goal,self.occupancy,self.plan_resolution)
 
             rospy.loginfo("Computing Navigation Plan")
+            
             if astar.solve():
-                rospy.loginfo("Navigation Success. Found %d waypoint path", len(astar.path))
+                rospy.loginfo("Navigation Success. Found %d waypoint path to (%6.3f, %6.3f)", len(astar.path), astar.path[-1][0], astar.path[-1][1])
                 # a naive path follower we could use
                 # pose_sp = (astar.path[1][0],astar.path[1][1],self.nav_sp[2])
                 # msg = Float32MultiArray()

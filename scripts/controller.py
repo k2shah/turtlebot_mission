@@ -2,7 +2,7 @@
 
 import rospy
 from std_msgs.msg import Int32MultiArray, Float32MultiArray, String
-from geometry_msgs.msg import PoseStamped, Twist
+from geometry_msgs.msg import PoseStamped, Twist, Pose
 from nav_msgs.msg import Path
 import tf
 import numpy as np
@@ -18,22 +18,25 @@ class Controller:
 
 
         #TUNNING PARAMS
-        self.path_tresh= .1 #dist to target the next wp
-        self.spin_gain = 1
-        self.spin_rate =2
+        self.path_tresh = .1 #dist to target the next wp
+        self.spin_gain  = 1
+        self.spin_rate = 2
+        self.pathSplit = 5
 
         # CHANGE TO MISSION WHEN JAMES IS DONE  
         rospy.Subscriber('/turtlebot_mission/path_goal', Path, self.updatePath)
         rospy.Subscriber('/turtlebot_mission/override', Float32MultiArray, self.override)
 
 
+
         self.x = 0.0
         self.y = 0.0
         self.th = 0.0
+        self.updateState()
 
-        self.x_g=0.0
-        self.y_g=0.0
-        self.th_g=0.0
+        self.x_g=self.x
+        self.y_g=self.y
+        self.th_g=self.th
 
         self.path=[]
         self.taskComplete=False
@@ -48,8 +51,29 @@ class Controller:
         #todo: add inital angle alignment to reduce path arcs. 
 
     def updatePath(self, msg):
-        rospy.loginfo("Path Updated")
-        self.path=[ps.pose for ps in msg.poses] #list of pose obected, pre parased from PATH and POSE STAMMPED
+        #self.path=[ps.pose for ps in msg.poses] #list of pose obected, pre parased from PATH and POSE STAMMPED
+        #make finner path
+        prePath=[ps.pose for ps in msg.poses]
+        path=[]
+        #parametrized path
+        t=[0,1]
+        tt=np.linspace(0, 1, self.pathSplit)
+        for pose, nextPose in zip(prePath, prePath[1:]):
+            x_cords=[pose.position.x, nextPose.position.x]
+            y_cords=[pose.position.y, nextPose.position.y]
+            x_interp= np.interp(tt, t, x_cords)
+            y_interp= np.interp(tt, t, y_cords)
+            for x, y in zip(x_interp, y_interp):
+                newPose=Pose()
+                #make new waypoint
+                newPose.position.x=x
+                newPose.position.y=y
+                newPose.orientation=pose.orientation
+                path.append(newPose)
+
+        path[-1]=prePath[-1] #overwrite last pose for orientation 
+        rospy.loginfo("Path Updated with %d Waypoints", len(path))
+        self.path=path
 
     def override(self, msg):
         #get gets called when override is published 
@@ -144,9 +168,9 @@ class Controller:
 
         #control law
         
-        k1=.8
-        if p< self.path_tresh*2:
-            k1=1 #keep from slowing towards the end
+        k1=1.
+        # if p< self.path_tresh*2:
+        #     k1=1 #keep from slowing towards the end
         k2=.8
         k3=.8
 
