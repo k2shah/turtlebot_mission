@@ -17,7 +17,7 @@ class CaptianControl:
     # topic to recieve messages from FSM to print (for debug/info)
     self.verbose_sub = rospy.Subscriber('/turtlebot_mission/verbose', String, self.verboseListener)
 
-    self.verbose_message = ''
+    self.verbose_message = 'test'
     self.err_state = -10**4
     self.cmd = ''
     self.my_nav_goal = np.zeros(3)*1.0
@@ -44,9 +44,9 @@ class CaptianControl:
         if(len(k_msg)==1): 
           if(  'h' == k_msg):
             self.printCommandList()
-          elif('p'==k_msg):
+          elif('v'==k_msg):
+            print 'verbose message: %s' %self.verbose_message
             self.printNavGoal()
-            print self.verbose_message
           elif('d'==k_msg):
             self.cmd = 'MOTORS_DISABLED'
             send_cmd = True
