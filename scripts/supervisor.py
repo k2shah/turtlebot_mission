@@ -30,6 +30,7 @@ class Supervisor:
 
         self.override_pub = rospy.Publisher('/turtlebot_mission/override', Float32MultiArray, queue_size=10)
         self.verbose_pub = rospy.Publisher('/turtlebot_mission/verbose', String, queue_size=10)
+        
 
         self.trans_listener = tf.TransformListener() # to get pose information
 
@@ -43,6 +44,14 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.w = quat[3]
 
         self.all_tag_numbers = range(7)
+
+        # Changes by adam ##########
+        self.nav_goal_exploit_pub = rospy.Publisher('/turtlebot_mission/nav_goal_exploit', Float32MultiArray, queue_size=10)
+        self.mission_goal_sub = rospy.Subscriber('/mission', Int32MultiArray, self.setTagVisitOrderCallback)
+        self.tag_visit_order = None 
+        self.tag_dist_thresh = 0.4;
+        self.num_tags_visited = -1
+        ############################
 
         # 0: initialization state
         # 1: human-directed exploration
@@ -58,6 +67,10 @@ class Supervisor:
         # pose information of robot
         self.pose = None
         self.start_angle = None # work around for rotation commands
+
+
+    def setTagVisitOrderCallback(self,data):
+        self.tag_visit_order = data.data
 
     def rviz_goal_callback(self, msg):
         pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
@@ -152,6 +165,33 @@ class Supervisor:
             # autonomous way-point following
             elif self.state == "exploit":
                 # not sure how to implement this
+
+                # added by adam ##################################
+
+                if(self.tag_visit_order is None):
+                    rospy.logwarn('self.tag_visit_order is None, commanding robot to be still')
+                    data = Float32MultiArray()
+                    data.data = [1, 0, 0] # override mode
+                    self.override_pub.publish(data)
+                else:
+                    if(self.num_tags_visited==-1): # first publish
+                        self.num_tags_visited = 0
+                        self.current_target_tag = self.tag_visit_order[0]
+                        wp_loc = self.waypoint_locations[self.current_target_tag]
+                        data = Float32MultiArray()
+                        data.data = np.array([wp_loc[0], wp_loc[1], 0])
+                        self.nav_goal_exploit_pub.publish(data)
+
+                    wp_loc = self.waypoint_locations[self.current_target_tag]
+                    dist_to_point = sqrt((self.pose[0]-wp_loc[0])**2 + (self.pose[1]-wp_loc[1])**2)**0.5
+                    if(dist_to_point <= self.tag_dist_thresh) # we are at the tag location, send next target!
+                        self.num_tags_visited += 1
+                        self.current_target_tag = self.tag_visit_order[self.num_tags_visited]
+                        wp_loc = self.waypoint_locations[self.current_target_tag]
+                        data = Float32MultiArray()
+                        data.data = np.array([wp_loc[0], wp_loc[1], 0])
+                        self.nav_goal_exploit_pub.publish(data)
+                ###################################################
                 pass                
 
             # disabled motors
