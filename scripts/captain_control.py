@@ -36,7 +36,7 @@ class CaptianControl:
     my_nav_goal.data = self.my_nav_goal
     nav_goal_updated = False
     try:
-      rospy.loginfo('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
+      print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
       print('Hit me with it') # input() no good, cant deal w/ letters w/o quotes
       k_msg = raw_input() # output is type String
       comma_ind = k_msg.find(',')
@@ -45,7 +45,7 @@ class CaptianControl:
           if(  'h' == k_msg):
             self.printCommandList()
           elif('v'==k_msg):
-            rospy.loginfo('\nverbose message: \n%s',self.verbose_message)
+            print('\nverbose message: \n%s' %self.verbose_message)
             self.printNavGoal()
           elif('d'==k_msg):
             self.cmd = 'MOTORS_DISABLED'
@@ -60,7 +60,7 @@ class CaptianControl:
             self.cmd = 'SPIN'
             send_cmd = True
           elif('r'==k_msg):
-            rospy.loginfo('\nEnter amount to rotate (degrees)')
+            print('\nEnter amount to rotate (degrees)')
             ang = self.readSingleChar()
             if( (ang != self.err_state) and (ang>-360) and (ang < 360) ):
               self.cmd = 'ROTATE_%.2f' %ang
@@ -68,19 +68,19 @@ class CaptianControl:
             else:
               send_cmd = False
           elif('x'==k_msg):
-            rospy.loginfo('\nEnter new desired x')
+            print('\nEnter new desired x')
             x_goal = self.readSingleChar()
             if(x_goal != self.err_state):
               my_nav_goal.data[0] = x_goal
               nav_goal_updated = True
           elif('y'==k_msg):
-            rospy.loginfo('\nEnter new desired y')
+            print('\nEnter new desired y')
             y_goal = self.readSingleChar()
             if(y_goal != self.err_state):
               my_nav_goal.data[1] = y_goal
               nav_goal_updated = True
           elif('t'==k_msg):
-            rospy.loginfo('\nEnter new desired theta (degrees)')
+            print('\nEnter new desired theta (degrees)')
             t_goal = self.readSingleChar()
             if(t_goal != self.err_state and (t_goal>0) and (t_goal < 360) ):
               my_nav_goal.data[2] = t_goal
@@ -96,16 +96,21 @@ class CaptianControl:
           t_ind = y_s.find(',')
           try:
             t_goal = my_nav_goal.data[2]
-            if(t_ind>=0):
+            if(t_ind>=0): # This means we have a theta
               t_s = y_s[(t_ind+1):]
               y_s = k_msg[(comma_ind+1):(comma_ind+1+t_ind)]
               t_goal = float(t_s)
-            if( (t_goal>0) and (t_goal < 360) ):
-              x_goal = float(x_s); y_goal = float(y_s)
-              my_nav_goal.data[0] = x_goal
-              my_nav_goal.data[1] = y_goal
-              my_nav_goal.data[2] = t_goal
-              nav_goal_updated = True
+              if( (t_goal>0) and (t_goal < 360) ):
+                x_goal = float(x_s); y_goal = float(y_s)
+                my_nav_goal.data[0] = x_goal
+                my_nav_goal.data[1] = y_goal
+                my_nav_goal.data[2] = t_goal
+                nav_goal_updated = True
+            else:# This means we have just x,y
+                x_goal = float(x_s); y_goal = float(y_s)
+                my_nav_goal.data[0] = x_goal
+                my_nav_goal.data[1] = y_goal
+                nav_goal_updated = True
           except ValueError: pass
     except NameError: 
       send_cmd = False
@@ -116,7 +121,7 @@ class CaptianControl:
       self.printNavGoal()
 
     if(send_cmd and (self.cmd != '') ):
-      rospy.loginfo('\nSENDING: %s', self.cmd)
+      print('\nSENDING: %s' %self.cmd)
       self.cmd_pub.publish(self.cmd)
 
   def readSingleChar(self):
@@ -131,10 +136,10 @@ class CaptianControl:
     self.verbose_message = msg.data
 
   def printNavGoal(self):
-    rospy.loginfo('\nnav_goal = [%.2f, %.2f, %.2f]',self.my_nav_goal[0],self.my_nav_goal[1],self.my_nav_goal[2])
+    print('\nnav_goal = [%.2f, %.2f, %.2f]' %(self.my_nav_goal[0],self.my_nav_goal[1],self.my_nav_goal[2]))
 
   def printCommandList(self):
-    rospy.loginfo('\nCommands:\n\t(h) <==> display command list again\n\
+    print('\nCommands:\n\t(h) <==> display command list again\n\
       \t(v) <==> print latest verbose message\n\
       \t(d) <==> disable motors\n\
       \t(a) <==> switch to explore mode (manual waypoints)\n\
