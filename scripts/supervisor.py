@@ -109,9 +109,9 @@ class Supervisor:
             # broadcast information
             self.get_current_pose()
             if self.pose is None:
-                data = 'waypoint_locations: %s' %(self.waypoint_locations)
+                data = 'waypoint_locations: %s\nFSM state: %s' %(self.waypoint_locations,self.state)
             else:
-                data = 'waypoint_locations: %s\ncurrent pose: [%0.2f,%0.2f,%0.2f]' %(self.pose[0],self.pose[1],self.pose[2],self.waypoint_locations)
+                data = 'waypoint_locations: %s\nFSM state: %s\ncurrent pose: [%0.2f,%0.2f,%0.2f]' %(self.pose[0],self.pose[1],self.pose[2],self.state,self.waypoint_locations)
             self.verbose_pub.publish(data)
 
             # starting state
