@@ -2,6 +2,8 @@
 import rospy
 from std_msgs.msg import String
 from std_msgs.msg import Float32MultiArray
+from geometry_msgs.msg import PoseStamped
+import tf
 import numpy as np
 
 class CaptianControl:
@@ -17,10 +19,14 @@ class CaptianControl:
     # topic to recieve messages from FSM to print (for debug/info)
     self.verbose_sub = rospy.Subscriber('/turtlebot_mission/verbose', String, self.verboseListener)
 
-    self.verbose_message = 'test'
+    self.verbose_message = ''
     self.err_state = -10**4
     self.cmd = ''
     self.my_nav_goal = np.zeros(3)*1.0
+
+    self.rviz_click_sub = rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_click_callback)    # rviz "2D Nav Goal"
+
+
 
 # This is the main loop of the node. Node will wait until user hits enter. Actions are taken for certain input. 
 #     For valid inputs, see the printCommandList(self) function. Invalid inputs will be ignored. Messages are
@@ -39,9 +45,8 @@ class CaptianControl:
     my_nav_goal.data = self.my_nav_goal
     nav_goal_updated = False
     try:
-      print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
-      print('Hit me with it') # input() no good, cant deal w/ letters w/o quotes
-      k_msg = raw_input() # output is type String
+      self.printCommandSeparator()
+      k_msg = raw_input() # output is type String (input() no good, cant deal w/ letters w/o quotes)
       comma_ind = k_msg.find(',')
       if(comma_ind == -1): # no comma - check if one of our commands
         if(len(k_msg)==1): 
@@ -137,6 +142,21 @@ class CaptianControl:
     except ValueError: pass
     return f
 
+  def rviz_click_callback(self, msg):
+    my_nav_goal = Float32MultiArray()
+    my_nav_goal.data = self.my_nav_goal
+    my_nav_goal.data[:2] = self.pose_to_xyth(msg.pose)[:2]
+    self.nav_goal_pub.publish(my_nav_goal)
+    self.printNavGoal()
+    self.printCommandSeparator()
+
+  def pose_to_xyth(self, pose):
+    th = tf.transformations.euler_from_quaternion((pose.orientation.x,
+                                                   pose.orientation.y,
+                                                   pose.orientation.z,
+                                                   pose.orientation.w))[2]
+    return [pose.position.x, pose.position.y, th]
+
   def verboseListener(self, msg):
     self.verbose_message = msg.data
 
@@ -157,6 +177,9 @@ class CaptianControl:
       \t(x) <==> prompt for desired x coordinate\n\
       \t(y) <==> prompt for desired y coordinate\n\
       \t(t) <==> prompt for desired theta (in degrees)\n')
+  
+  def printCommandSeparator(self):
+      print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\nHit me with it')
 
   def run(self):
     rate = rospy.Rate(10) # 10 Hz
