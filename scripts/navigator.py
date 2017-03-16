@@ -16,7 +16,7 @@ class Navigator:
         rospy.init_node('turtlebot_navigator', anonymous=True)
 
         self.plan_resolution = 0.25
-        self.plan_horizon = 15
+        self.plan_horizon = 10
 
         self.map_width = 0
         self.map_height = 0
