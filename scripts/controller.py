@@ -20,9 +20,11 @@ class Controller:
         #TUNNING PARAMS
         self.path_tresh= .1 #dist to target the next wp
         self.spin_gain = 1
+        self.spin_rate =2
 
-        rospy.Subscriber('/turtlebot_controller/position_goal_override', Float32MultiArray, self.getGoal)
+        # CHANGE TO MISSION WHEN JAMES IS DONE  
         rospy.Subscriber('/turtlebot_controller/path_goal', Path, self.updatePath)
+        rospy.Subscriber('/turtlebot_mission/override', Float32MultiArray, self.override)
 
 
         self.x = 0.0
@@ -33,22 +35,39 @@ class Controller:
         self.y_g=0.0
         self.th_g=0.0
 
-        self.path=[[0.0, 1.0, np.pi/2], [2.0, 1.0, 0.0], [2.0, 0.0, -np.pi/2], [3.0, 0.0, 0.0]  ]  #test path
+        self.path=[]
+        #self.path=[[0.0, 1.0, np.pi/2], [2.0, 1.0, 0.0], [2.0, 0.0, -np.pi/2], [3.0, 0.0, 0.0]  ]  #test path
 
+
+        #override
+        self.cmdState = 0
+        self.cmd_V = 0
+        self.cmd_w = 0
 
         #todo: add inital angle alignment to reduce path arcs. 
 
     def updatePath(self, msg):
+        rospy.loginfo("Path Updated")
         self.path=[ps.pose for ps in msg.poses] #list of pose obected, pre parased from PATH and POSE STAMMPED
 
-    def getGoal(self, msg):
-        #get paths from navi
-        self.x_g, self.y_g, self.th_g =msg.data
+    def override(self, msg):
+        #get gets called when override is published 
+        self.cmdState, self.cmd_V, self.cmd_w =msg.data
 
     def pathParse(self):
         pose=self.path.pop(0)
-        print(pose)
-        euler = tf.transformations.euler_from_quaternion(pose.orientation)
+                      
+        if len(self.path)==0:
+             rospy.logwarn("Path Buffer Empty")
+
+        #unpack and convert to euler
+        quaternion = (
+            pose.orientation.x,
+            pose.orientation.y,
+            pose.orientation.z,
+            pose.orientation.w)
+        euler = tf.transformations.euler_from_quaternion(quaternion)
+        #return reduced pose
         return pose.position.x, pose.position.y, euler[2]
 
 
@@ -98,17 +117,16 @@ class Controller:
         
         if  p<self.path_tresh: #get get point if close
             if len(self.path)==0 :
-                print("Path is empty\n")
                 cmd.linear.x=0
                 cmd.angular.z= 0 #shut everything down
                 return cmd
 
             else:
-                print("going to new waypoint \n")
                 self.x_g, self.y_g, self.th_g= self.pathParse()
-                print(self.x_g, self.y_g, self.th_g)
+                rospy.loginfo("going to new waypoint %f, %f, $%F",          
+                                                    self.x_g, self.y_g, self.th_g)
 
-        #unpack msg
+        #unpack pose
         x_g=self.x_g; y_g=self.y_g; th_g=self.th_g #goal
 
         #SPIN IN PLACE UNTILL ALIGNED
@@ -126,7 +144,7 @@ class Controller:
 
         #control law
         
-        k1=.4
+        k1=.5
         if p< self.path_tresh*2:
             k1=.7 #keep from slowing towards the end
         k2=.8
@@ -139,19 +157,32 @@ class Controller:
         cmd_x_dot = np.sign(V)*min(0.5, np.abs(V))
         cmd_theta_dot = np.sign(om)*min(1, np.abs(om))
 
-        # end of what you need to modify
         cmd.linear.x = cmd_x_dot
         cmd.angular.z = cmd_theta_dot
-        self.targetLock=True
+        #print(cmd)
+        return cmd
+
+
+    def override_output():
+        cmd = Twist()
+        cmd.linear.x = self.cmd_V
+        cmd.angular.z = self.cmd_w
         return cmd
 
     def run(self):
         rate = rospy.Rate(10) # 10 Hz
         while not rospy.is_shutdown():
-            ctrl_output = self.get_ctrl_output()
-            
+            #cmd is a Twist
+            if self.cmdState==0: #autonomous mode
+                cmd = self.get_ctrl_output() 
+            else:
+                cmd=self.override_output()
+
+
+
+
             #### THIS MAKES IT MOVE
-            #self.pub.publish(ctrl_output)
+            self.pub.publish(cmd)
             ####
 
             rate.sleep()
