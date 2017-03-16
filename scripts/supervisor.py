@@ -38,6 +38,8 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.z = quat[2]
         self.waypoint_offset.pose.orientation.w = quat[3]
 
+        self.all_tag_numbers = range(7)
+
         # 0: initialization state
         # 1: human-directed exploration
         # 2: autonomous mission execution
@@ -46,7 +48,7 @@ class Supervisor:
         self.state = "init"
 
         # current command from CMDLINE as well as commanded angle (if applicable)
-        self.curr_cmd = None
+        self.curr_cmd = ""
         self.cmd_angle = None
 
         # pose information of robot
@@ -63,14 +65,21 @@ class Supervisor:
             self.cmd_angle = float(msg.data[7:])
 
     def update_waypoints(self):
-        for tag_number in self.mission:
+        for tag_number in self.all_tag_numbers:
             try:
                 self.waypoint_offset.header.frame_id = "/tag_{0}".format(tag_number)
                 self.waypoint_locations[tag_number] = self.trans_listener.transformPose("/map", self.waypoint_offset)
             except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
                 pass
+            if tag_number in self.waypoint_locations:
+                wp = self.waypoint_locations[tag_number].pose
+                self.trans_broad.sendTransform((wp.position.x, wp.position.y, 0),
+                                               (wp.orientation.x, wp.orientation.y, wp.orientation.z, wp.orientation.w),
+                                               rospy.Time.now(),
+                                               "waypoint_{0}".format(tag_number),
+                                               "/map")
 
-    def get_current_pose():
+    def get_current_pose(self):
         try:
             (translation,rotation) = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
             euler = tf.transformations.euler_from_quaternion(rotation)
@@ -78,14 +87,14 @@ class Supervisor:
         except:
             pass
 
-    def check_global_events():
+    def check_global_events(self):
         if self.curr_cmd == "MOTORS_DISABLED":
             self.state = "disabled"
 
         elif self.curr_cmd == "EXPLOIT_MODE":
             self.state = "exploit"
 
-        elif self.curr_cmd = "EXPLORE_MODE":
+        elif self.curr_cmd == "EXPLORE_MODE":
             self.state = "explore" 
 
 
@@ -98,8 +107,12 @@ class Supervisor:
             self.check_global_events()
 
             # broadcast information
-            data = 'current pose: [%0.2f,%0.2f,%0.2f]\nwaypoint_locations: %s' %(self.pose[0],self.pose[1],self.pose[2],self.waypoint_locations)
-            self.verbose_pub(data)
+            self.get_current_pose()
+            if self.pose is None:
+                data = ''
+            else:
+                data = 'current pose: [%0.2f,%0.2f,%0.2f]\nwaypoint_locations: %s' %(self.pose[0],self.pose[1],self.pose[2],self.waypoint_locations)
+            self.verbose_pub.publish(data)
 
             # starting state
             if self.state == "init":
@@ -112,7 +125,6 @@ class Supervisor:
                 self.override_pub.publish(data)
 
                 if self.curr_cmd[0:6] == "ROTATE":
-                    self.get_current_pose()
                     self.start_angle = self.pose[2]
                     self.state = "explore_rotate"
 
@@ -126,7 +138,6 @@ class Supervisor:
 
                 self.override_pub.publish(data)
 
-                self.get_current_pose()
                 if abs(self.pose[2] - self.start_angle) < 5:
                     data = Float32MultiArray()
                     data.data = [0, 0, 0] # revert to autonomous mode
