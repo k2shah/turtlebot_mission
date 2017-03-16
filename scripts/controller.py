@@ -53,27 +53,30 @@ class Controller:
     def updatePath(self, msg):
         #self.path=[ps.pose for ps in msg.poses] #list of pose obected, pre parased from PATH and POSE STAMMPED
         #make finner path
-        prePath=[ps.pose for ps in msg.poses]
-        path=[]
-        #parametrized path
-        t=[0,1]
-        tt=np.linspace(0, 1, self.pathSplit)
-        for pose, nextPose in zip(prePath, prePath[1:]):
-            x_cords=[pose.position.x, nextPose.position.x]
-            y_cords=[pose.position.y, nextPose.position.y]
-            x_interp= np.interp(tt, t, x_cords)
-            y_interp= np.interp(tt, t, y_cords)
-            for x, y in zip(x_interp, y_interp):
-                newPose=Pose()
-                #make new waypoint
-                newPose.position.x=x
-                newPose.position.y=y
-                newPose.orientation=pose.orientation
-                path.append(newPose)
+        if len(msg.poses)==0:
+            rospy.logwarn("Path is Empty")
+        else:
+            prePath=[ps.pose for ps in msg.poses]
+            path=[]
+            #parametrized path
+            t=[0,1]
+            tt=np.linspace(0, 1, self.pathSplit)
+            for pose, nextPose in zip(prePath, prePath[1:]):
+                x_cords=[pose.position.x, nextPose.position.x]
+                y_cords=[pose.position.y, nextPose.position.y]
+                x_interp= np.interp(tt, t, x_cords)
+                y_interp= np.interp(tt, t, y_cords)
+                for x, y in zip(x_interp, y_interp):
+                    newPose=Pose()
+                    #make new waypoint
+                    newPose.position.x=x
+                    newPose.position.y=y
+                    newPose.orientation=pose.orientation
+                    path.append(newPose)
 
-        path[-1]=prePath[-1] #overwrite last pose for orientation 
-        rospy.loginfo("Path Updated with %d Waypoints", len(path))
-        self.path=path
+            path[-1]=prePath[-1] #overwrite last pose for orientation 
+            rospy.loginfo("Path Updated with %d Waypoints", len(path))
+            self.path=path
 
     def override(self, msg):
         #get gets called when override is published 

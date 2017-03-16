@@ -120,7 +120,7 @@ class AStar(object):
     def solve(self):
         while len(self.open_set)>0:
             _, xc=min([(self.f_score[node], node) for node in self.open_set ])
-            if norm(xc-self.x_goal)<self.goal_thresh: #check if done 
+            if  np.linalg.norm(np.asarray(xc)-np.asarray(self.x_goal))<self.goal_thresh: #check if done 
                 #print("found path")
                 self.path= self.reconstruct_path() #return path 
                 return True
