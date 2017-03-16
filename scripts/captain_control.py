@@ -82,7 +82,7 @@ class CaptianControl:
           elif('t'==k_msg):
             print('\nEnter new desired theta (degrees)')
             t_goal = self.readSingleChar()
-            if(t_goal != self.err_state and (t_goal>0) and (t_goal < 360) ):
+            if(t_goal != self.err_state and (t_goal>=0) and (t_goal < 360) ):
               my_nav_goal.data[2] = t_goal
               nav_goal_updated = True
           else:
@@ -100,7 +100,7 @@ class CaptianControl:
               t_s = y_s[(t_ind+1):]
               y_s = k_msg[(comma_ind+1):(comma_ind+1+t_ind)]
               t_goal = float(t_s)
-              if( (t_goal>0) and (t_goal < 360) ):
+              if( (t_goal>=0) and (t_goal < 360) ):
                 x_goal = float(x_s); y_goal = float(y_s)
                 my_nav_goal.data[0] = x_goal
                 my_nav_goal.data[1] = y_goal
