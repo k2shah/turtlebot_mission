@@ -23,6 +23,8 @@ class Supervisor:
 
         rospy.Subscriber('/move_base_simple/goal', PoseStamped, self.rviz_goal_callback)    # rviz "2D Nav Goal"
 
+        rospy.Subscriber('/turtlebot_mission/fsm_command', String, self.fsm_cmd_callback)
+
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
         self.waypoint_offset = PoseStamped()
         self.waypoint_offset.pose.position.z = .4    # waypoint is located 40cm in front of the AprilTag, facing it
@@ -32,9 +34,21 @@ class Supervisor:
         self.waypoint_offset.pose.orientation.z = quat[2]
         self.waypoint_offset.pose.orientation.w = quat[3]
 
+        # 0: initial state
+        # 1: human-directed exploration
+        # 2: autonomous mission execution
+        # 3: ???
+        self.state = "init"
+
+        # current command from CMDLINE
+        self.curr_cmd = None
+
     def rviz_goal_callback(self, msg):
         pose_to_xyth(msg.pose)    # example usage of the function pose_to_xyth (defined above)
         # this callback does nothing... yet!
+
+    def fsm_cmd_callback(self, msg):
+        self.curr_cmd = msg.data
 
     def update_waypoints(self):
         for tag_number in self.mission:
@@ -50,6 +64,17 @@ class Supervisor:
             self.update_waypoints()
 
             # FILL ME IN!
+            if self.state == "init":
+                # do something
+                self.state = "explore"
+
+            elif self.state == "explore":
+
+                if self.curr_cmd == "EXPLOIT_MODE":
+                    self.state = "exploit"
+
+            elif self.state == "exploit":
+
 
             rate.sleep()
 
