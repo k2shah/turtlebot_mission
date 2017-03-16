@@ -12,7 +12,7 @@ class CaptianControl:
     self.cmd_pub = rospy.Publisher('/turtlebot_mission/fsm_command', String, queue_size=10)
 
     # topic where goal state for autonomous explore mode
-    self.nav_goal_pub = rospy.Publisher('/turtlebot_mission/nav_goal', Float32MultiArray, queue_size=10)
+    self.nav_goal_pub = rospy.Publisher('/turtlebot_mission/nav_goal_explore', Float32MultiArray, queue_size=10)
 
     # topic to recieve messages from FSM to print (for debug/info)
     self.verbose_sub = rospy.Subscriber('/turtlebot_mission/verbose', String, self.verboseListener)
@@ -30,8 +30,8 @@ class CaptianControl:
 #     if more than 2 commas, ignore. If 1 or 2 commas, parse into #,# or #,#,#. Try/Except to catch if any casts
 #     from string to floats fail (if failure, ignore).
 # 
-# NOTE: all angles published/stored are in radians, but input/display are in degrees
-# 
+# NOTE: all angles published/stored are in radians, but input/display are in degrees. The exception is for 
+#     sending the ROTATE_<angle> command, which is still in degrees.
   def loop(self):
     send_cmd = False
     self.cmd = ''
@@ -50,6 +50,8 @@ class CaptianControl:
           elif('v'==k_msg):
             print('\nverbose message: \n%s' %self.verbose_message)
             self.printNavGoal()
+          elif('n'==k_msg):
+            nav_goal_updated = True # this will cause the nav_goal to be published, even though its not changed
           elif('d'==k_msg):
             self.cmd = 'MOTORS_DISABLED'
             send_cmd = True
@@ -145,6 +147,7 @@ class CaptianControl:
     print('\nCommands:\n\t(h) <==> display command list again\n\
       \t(v) <==> print latest verbose message\n\
       \t(d) <==> disable motors\n\
+      \t(n) <==> republish nav_goal\n\
       \t(a) <==> switch to explore mode (manual waypoints)\n\
       \t(z) <==> switch to exploit mode (autonomous waypoints)\n\
       \t(#,#) <==> set desired x,y coordinate\n\
