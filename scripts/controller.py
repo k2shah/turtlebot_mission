@@ -3,6 +3,7 @@
 import rospy
 from std_msgs.msg import Int32MultiArray, Float32MultiArray, String
 from geometry_msgs.msg import PoseStamped, Twist
+from nav_msgs.msg import Path
 import tf
 import numpy as np
 
@@ -37,11 +38,37 @@ class Controller:
 
         #todo: add inital angle alignment to reduce path arcs. 
 
-    def 
+    def updatePath(self, msg):
+        self.path=[ps.pose for ps in msg.poses] #list of pose obected, pre parased from PATH and POSE STAMMPED
 
     def getGoal(self, msg):
         #get paths from navi
         self.x_g, self.y_g, self.th_g =msg.data
+
+    def pathParse(self):
+        pose=self.path.pop(0)
+        print(pose)
+        euler = tf.transformations.euler_from_quaternion(pose.orientation)
+        return pose.position.x, pose.position.y, euler[2]
+
+
+
+        print self.path
+
+    def updateState(self):
+        #gets state from transform tree
+        try:
+            (translation,rotation) = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
+            euler = tf.transformations.euler_from_quaternion(rotation)
+            #state
+            self.x=translation[0]
+            self.y=translation[1]
+            self.th = euler[2]
+            #print("\nstate from translation\n")
+            #print(self.x, self.y, self.theta)
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            pass
+
 
         
     def get_ctrl_output(self):
@@ -55,17 +82,9 @@ class Controller:
                 b = ((a+np.pi) % (2*np.pi)) - np.pi
             return b
         #get pose from map stuff
-        try:
-            (translation,rotation) = self.trans_listener.lookupTransform("/map", "/base_footprint", rospy.Time(0))
-            euler = tf.transformations.euler_from_quaternion(rotation)
-            #state
-            self.x=translation[0]
-            self.y=translation[1]
-            self.th = euler[2]
-            #print("\nstate from translation\n")
-            #print(self.x, self.y, self.theta)
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            pass
+        self.updateState()
+
+
         #init cmd
         cmd = Twist()
         #unpack to local 
@@ -86,7 +105,7 @@ class Controller:
 
             else:
                 print("going to new waypoint \n")
-                self.x_g, self.y_g, self.th_g= self.path.pop(0)
+                self.x_g, self.y_g, self.th_g= self.pathParse()
                 print(self.x_g, self.y_g, self.th_g)
 
         #unpack msg
@@ -108,7 +127,7 @@ class Controller:
         #control law
         
         k1=.4
-        if p< self.path_tresh/2:
+        if p< self.path_tresh*2:
             k1=.7 #keep from slowing towards the end
         k2=.8
         k3=.8
@@ -130,7 +149,11 @@ class Controller:
         rate = rospy.Rate(10) # 10 Hz
         while not rospy.is_shutdown():
             ctrl_output = self.get_ctrl_output()
-            self.pub.publish(ctrl_output)
+            
+            #### THIS MAKES IT MOVE
+            #self.pub.publish(ctrl_output)
+            ####
+
             rate.sleep()
 
 if __name__ == '__main__':
