@@ -30,8 +30,8 @@ class CaptianControl:
 #     if more than 2 commas, ignore. If 1 or 2 commas, parse into #,# or #,#,#. Try/Except to catch if any casts
 #     from string to floats fail (if failure, ignore).
 # 
-# NOTE: all angles published/stored are in radians, but input/display are in degrees. The exception is for 
-#     sending the ROTATE_<angle> command, which is still in degrees.
+# NOTE: all angles published/stored are in radians, but input/display are in degrees. 
+# 
   def loop(self):
     send_cmd = False
     self.cmd = ''
@@ -66,8 +66,8 @@ class CaptianControl:
             send_cmd = True
           elif('r'==k_msg):
             print('\nEnter amount to rotate (degrees)')
-            ang = self.readSingleChar()
-            if( (ang != self.err_state) and (ang>-360) and (ang < 360) ):
+            ang = (self.readSingleChar())*(np.pi/180)
+            if( (ang != self.err_state) and (ang>-2*np.pi) and (ang < 2*np.pi) ):
               self.cmd = 'ROTATE_%.2f' %ang
               send_cmd = True
             else:
