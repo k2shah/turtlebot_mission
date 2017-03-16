@@ -1,20 +1,24 @@
 #!/usr/bin/env python
 import rospy
 from std_msgs.msg import String
+from std_msgs.msg import Float32MultiArray
 import numpy as np
 
 class CaptianControl:
 
   def __init__(self):
     rospy.init_node('turtlebot_captain', anonymous=True)
-    self.cmd_pub = rospy.Publisher('/turtlebot_mission/explore_command', String, queue_size=10)
-    self.nav_goal_pub = rospy.Publisher('/turtlebot_mission/nav_goal', String, queue_size=10)
+    self.cmd_pub = rospy.Publisher('/turtlebot_mission/fsm_command', String, queue_size=10)
+    self.nav_goal_pub = rospy.Publisher('/turtlebot_mission/nav_goal', Float32MultiArray, queue_size=10)
     self.err_state = -10**4
     self.cmd = ''
+    self.my_nav_goal = np.zeros(3)*1.0
 
   def loop(self):
     send_cmd = False
     self.cmd = ''
+    my_nav_goal = Float32MultiArray()
+    my_nav_goal.data = self.my_nav_goal
     try:
       print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
       print('Hit me with it') # input() no good, cant deal w/ straight letters w/o quotes
@@ -52,24 +56,21 @@ class CaptianControl:
             print('Enter new desired x')
             x_goal = self.readSingleChar()
             if(x_goal != self.err_state):
-              self.cmd = 'SET_X_%.2f' %x_goal
-              send_cmd = True
+              my_nav_goal.data[0] = x_goal
             else:
               send_cmd = False
           elif('y'==k_msg):
             print('Enter new desired y')
             y_goal = self.readSingleChar()
             if(y_goal != self.err_state):
-              self.cmd = 'SET_Y_%.2f' %y_goal
-              send_cmd = True
+              my_nav_goal.data[1] = y_goal
             else:
               send_cmd = False
           elif('t'==k_msg):
             print('Enter new desired theta (degrees)')
             t_goal = self.readSingleChar()
             if(t_goal != self.err_state):
-              self.cmd = 'SET_T_%.2f' %t_goal
-              send_cmd = True
+              my_nav_goal.data[2] = t_goal
             else:
               send_cmd = False
           else:
@@ -83,19 +84,20 @@ class CaptianControl:
           send_cmd = False
         else:
           try:
-            x = float(x_s); y = float(y_s)
-            self.cmd = 'SET_XY_%.2f_%.2f' %(x,y)
-            send_cmd = True
+            x_goal = float(x_s); y_goal = float(y_s)
+            my_nav_goal.data[0] = x_goal
+            my_nav_goal.data[1] = y_goal
           except ValueError:
             send_cmd = False
     except NameError: 
       send_cmd = False
 
+    print('nav_goal = [%.2f, %.2f, %.2f]' %(my_nav_goal.data[0],my_nav_goal.data[1],my_nav_goal.data[2]))
+    self.nav_goal_pub.publish(my_nav_goal)
+    self.my_nav_goal = my_nav_goal.data
     if(send_cmd and (self.cmd != '') ):
       print 'SENDING: %s' %self.cmd
       self.cmd_pub.publish(self.cmd)
-    else:
-      print 'Try again'
 
   def readSingleChar(self):
     f = self.err_state
