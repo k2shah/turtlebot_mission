@@ -65,8 +65,10 @@ class Supervisor:
 
     def fsm_cmd_callback(self, msg):
         self.curr_cmd = msg.data
-        if self.curr_cmd == "SPIN" or self.curr_cmd[0:6] == "ROTATE":
-            self.cmd_angle = wrapToPi( float(msg.data[7:]) )
+        if self.curr_cmd == "SPIN":
+            self.cmd_angle = 0.0
+        elif self.curr_cmd[0:6] == "ROTATE":
+            self.cmd_angle = wrapToPi( (np.pi/180)*float(msg.data[7:]) )
 
     def update_waypoints(self):
         for tag_number in self.all_tag_numbers:
@@ -126,7 +128,7 @@ class Supervisor:
                 data.data = [0, 0, 0] # revert to autonomous mode
                 self.override_pub.publish(data)
 
-                if self.curr_cmd[0:6] == "ROTATE":
+                if self.curr_cmd[0:6] == "ROTATE" and self.pose is not None:
                     self.start_angle = self.pose[2]
                     self.state = "explore_rotate"
 
