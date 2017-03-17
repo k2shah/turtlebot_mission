@@ -153,8 +153,8 @@ class Controller:
                 return cmd
             else:
                 self.x_g, self.y_g, self.th_g= self.pathParse()
-                rospy.loginfo("Waypoint Update: %f, %f, %f",          
-                                                    self.x_g, self.y_g, self.th_g)
+                #rospy.loginfo("Waypoint Update: %f, %f, %f",          
+                #                                   self.x_g, self.y_g, self.th_g)
 
         #unpack pose
         x_g=self.x_g; y_g=self.y_g; th_g=self.th_g #goal
