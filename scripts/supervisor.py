@@ -31,7 +31,6 @@ class Supervisor:
         self.override_pub = rospy.Publisher('/turtlebot_mission/override', Float32MultiArray, queue_size=10)
         self.verbose_pub = rospy.Publisher('/turtlebot_mission/verbose', String, queue_size=10)
         
-
         self.trans_listener = tf.TransformListener() # to get pose information
 
         self.waypoint_locations = {}    # dictionary that caches the most updated locations of each mission waypoint
@@ -50,7 +49,7 @@ class Supervisor:
         self.mission_goal_sub = rospy.Subscriber('/mission', Int32MultiArray, self.mission_callback)
         self.tag_visit_order = None 
         self.tag_dist_thresh = 0.4
-        self.num_tags_visited = None
+        self.tag_index = -1
 
         # 0: initialization state
         # 1: human-directed exploration
@@ -114,10 +113,23 @@ class Supervisor:
 
         elif self.curr_cmd == "EXPLOIT_MODE":
             if self.tag_visit_order is None:
-                rospy.logwarn('self.tag_visit_order is None, stopping robot')
-                data = Float32MultiArray()
-                data.data = [1, 0, 0] # override mode
-                self.override_pub.publish(data)
+                rospy.logwarn('mission spec has not been updated!')
+                self.curr_cmd = ""
+                return
+
+            for el in set(self.tag_visit_order):
+                if el not in self.waypoint_locations.keys():
+                    rospy.logwarn('not all tags have been found!')
+                    self.curr_cmd = ""
+                    return
+
+            rospy.logwarn("----------STARTING AUTONOMOUS MODE----------")
+            # switch to exploit topic in navigator/controller
+            data = Float32MultiArray()
+            data.data = [2,0,0]
+            self.override_pub.publish(data)
+
+            self.curr_cmd = ""
             self.state = "exploit"
 
         elif self.curr_cmd == "EXPLORE_MODE":
@@ -134,7 +146,18 @@ class Supervisor:
 
             # broadcast information
             self.get_current_pose()
-            data = 'waypoints found: %s\nFSM state: %s\ncurrent pose: %s' %(self.waypoint_locations.keys(),self.state,self.pose)
+
+            num_found = "-"
+            if self.tag_visit_order is None:
+                num_total = "-"
+            else:
+                num_total = len(set(self.tag_visit_order))
+                num_found = 0
+                for el in self.waypoint_locations.keys():
+                    if el in self.tag_visit_order:
+                        num_found += 1
+
+            data = 'waypoints found: %s\nwaypoints progress: %s/%s\nFSM state: %s\ncurrent pose: %s' %(self.waypoint_locations.keys(),num_found,num_total,self.state,self.pose)
             self.verbose_pub.publish(data)
 
             # starting state
@@ -179,23 +202,26 @@ class Supervisor:
             # autonomous way-point following
             elif self.state == "exploit":
 
-                if self.num_tags_visited is None: # first publish
-                    self.num_tags_visited = 0
-                    self.current_target_tag = self.tag_visit_order[self.num_tags_visited]
-                    wp_loc = self.waypoint_locations[self.current_target_tag]
+                if self.tag_index == -1:
+                    self.tag_index += 1
+                    wp = self.waypoint_locations[self.tag_visit_order[self.tag_index]]
+
                     data = Float32MultiArray()
-                    data.data = np.array([wp_loc[0], wp_loc[1], 0]) # update the angle here later
+                    data.data = [wp.pose.position.x, wp.pose.position.y, 0]
                     self.nav_goal_exploit_pub.publish(data)
 
-                wp_loc = self.waypoint_locations[self.current_target_tag]
-                dist_to_point = sqrt((self.pose[0]-wp_loc[0])**2 + (self.pose[1]-wp_loc[1])**2)**0.5
-                if dist_to_point <= self.tag_dist_thresh: # we are at the tag location, send next target!
-                    self.num_tags_visited += 1
-                    self.current_target_tag = self.tag_visit_order[self.num_tags_visited]
-                    wp_loc = self.waypoint_locations[self.current_target_tag]
+                dist = np.sqrt((self.pose[0]-wp.pose.position.x)**2 + (self.pose[1]-wp.pose.position.y**2))
+
+                rospy.logwarn("current tag: %s, dist to tag: %s",self.tag_visit_order[self.tag_index],dist)
+
+                if dist <= self.tag_dist_thresh:
+                    self.tag_index += 1
+                    wp = self.waypoint_locations[self.tag_visit_order[self.tag_index]]
+
                     data = Float32MultiArray()
-                    data.data = np.array([wp_loc[0], wp_loc[1], 0]) # update the angle here later
+                    data.data = [wp.pose.position.x, wp.pose.position.y, 0]
                     self.nav_goal_exploit_pub.publish(data)
+
 
             # disabled motors
             elif self.state == "disabled":

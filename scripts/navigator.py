@@ -45,6 +45,7 @@ class Navigator:
     def override(self, msg):
         #get gets called when override is published 
         self.navState= msg.data[0] #override state 
+        rospy.logwarn("state is %d", self.navState)
 
     def map_md_callback(self,msg):
         self.map_width = msg.width
@@ -64,12 +65,13 @@ class Navigator:
                                                   self.map_probs)
 
     def nav_explore_sp_callback(self,msg):
-        if self.navState==0: #explore the world 
+        if self.navState==0.0: #explore the world 
             self.nav_sp = (msg.data[0],msg.data[1],msg.data[2])
             self.send_pose_sp()
 
     def nav_exploit_sp_callback(self,msg):
-        if self.navState==2: #take the world
+        rospy.logwarn("HELLO")
+        if self.navState==2.0: #take the world
             self.nav_sp = (msg.data[0],msg.data[1],msg.data[2])
             self.send_pose_sp()
 
