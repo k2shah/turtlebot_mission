@@ -98,6 +98,7 @@ class Navigator:
             state_max = (int(round(self.plan_horizon)), int(round(self.plan_horizon)))
             x_init = (round(robot_translation[0]/self.plan_resolution)*self.plan_resolution, round(robot_translation[1]/self.plan_resolution)*self.plan_resolution)
             x_goal = ((round(self.nav_sp[0]/self.plan_resolution))*self.plan_resolution, round(self.nav_sp[1]/self.plan_resolution)*self.plan_resolution)
+            rospy.logwarn("x_init (after rounding): (%6.4f,%6.4f)",x_init[0],x_init[1])
             rospy.logwarn("x_goal (after rounding): (%6.4f,%6.4f)",x_goal[0],x_goal[1])
             astar = AStar(state_min,state_max,x_init,x_goal,self.occupancy,self.plan_resolution)
 
