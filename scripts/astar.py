@@ -123,6 +123,8 @@ class AStar(object):
             if  np.linalg.norm(np.asarray(xc)-np.asarray(self.x_goal))<self.goal_thresh: #check if done 
                 #print("found path")
                 self.path= self.reconstruct_path() #return path 
+                if len(self.path)<2:
+                    return False #returns false for 1 trival paths
                 return True
             #move node from open to close 
             self.open_set.remove(xc) 
