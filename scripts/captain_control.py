@@ -145,7 +145,8 @@ class CaptianControl:
   def rviz_click_callback(self, msg):
     my_nav_goal = Float32MultiArray()
     my_nav_goal.data = self.my_nav_goal
-    my_nav_goal.data[:2] = self.pose_to_xyth(msg.pose)[:2]
+    my_nav_goal.data = self.pose_to_xyth(msg.pose)
+    self.my_nav_goal = my_nav_goal.data
     self.nav_goal_pub.publish(my_nav_goal)
     self.printNavGoal()
     self.printCommandSeparator()
@@ -155,6 +156,8 @@ class CaptianControl:
                                                    pose.orientation.y,
                                                    pose.orientation.z,
                                                    pose.orientation.w))[2]
+    if(th<0):
+      th+=2*np.pi
     return [pose.position.x, pose.position.y, th]
 
   def verboseListener(self, msg):
