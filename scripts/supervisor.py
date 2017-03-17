@@ -212,10 +212,10 @@ class Supervisor:
                     rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
                     data = Float32MultiArray()
                     #data.data = [wp.pose.position.x, wp.pose.position.y, 0]
-                    data.data = pose_to_xyth(wp)
+                    data.data = pose_to_xyth(wp.pose)
                     self.nav_goal_exploit_pub.publish(data)
 
-                wpx, wpy, wpth = pose_to_xyth(wp)
+                wpx, wpy, wpth = pose_to_xyth(wp.pose)
                 dist = np.sqrt((self.pose[0]-wpx)**2 + (self.pose[1]-wpy)**2)
 
                 #rospy.logwarn("current tag: %s, dist to tag: %s",self.tag_visit_order[self.tag_index],dist)
@@ -231,7 +231,7 @@ class Supervisor:
                     rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
                     data = Float32MultiArray()
                     #data.data = [wp.pose.position.x, wp.pose.position.y, 0]
-                    data.data = pose_to_xyth(wp)
+                    data.data = pose_to_xyth(wp.pose)
                     self.nav_goal_exploit_pub.publish(data)
  
 
