@@ -10,10 +10,17 @@ class AStar(object):
     def __init__(self, statespace_lo, statespace_hi, x_init, x_goal, occupancy, resolution=1):
         self.statespace_lo = statespace_lo    # state space lower bound (e.g., (-5, -5))
         self.statespace_hi = statespace_hi    # state space upper bound (e.g., (5, 5))
-        self.x_init = x_init                  # initial state
-        self.x_goal = x_goal                  # goal state
+
         self.occupancy = occupancy            # occupancy grid
         self.resolution = resolution          # resolution of the discretization of state space (cell/m)
+
+        #snap init
+        self.x_init = x_init                  # initial state
+        self.x_init = self.snap_to_grid(x_init)
+        
+        #snap goal 
+        self.x_goal = x_goal                  # goal state
+        self.x_goal = self.snap_to_grid(x_goal)
 
         self.closed_set = []    # the set containing the states that have been visited
         self.open_set = []      # the set containing the states that are condidate for future expension
@@ -35,8 +42,13 @@ class AStar(object):
     # INPUT: (x)
     #          x - tuple state
     # OUTPUT: Boolean True/False
+    def snap_to_grid(self, xy):
+        return (self.resolution*round(xy[0]/self.resolution), self.resolution*round(xy[1]/self.resolution))
+
+
+
     def is_free(self, x):
-        if x==self.x_init or x==self.x_goal:
+        if x==self.x_init or (np.linalg.norm(np.asarray(x)-np.asarray(self.x_goal))<(self.resolution*2)) :
             return True
         for dim in range(len(x)):
             if x[dim] < self.statespace_lo[dim]:
@@ -70,6 +82,7 @@ class AStar(object):
             if (delx, dely)==(0,0):
                 continue #deal with the no move state 
             nextPt= (x[0]+ delx, x[1]+dely)
+            nextPt= self.snap_to_grid(nextPt)
             if self.is_free(nextPt):
                 free.append(nextPt)
         return free

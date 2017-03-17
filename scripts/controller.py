@@ -21,7 +21,7 @@ class Controller:
         self.path_tresh = .1 #dist to target the next wp
         self.spin_gain  = .5
         self.spin_rate = 2
-        self.pathSplit = 3
+        self.pathSplit = 5
 
         # CHANGE TO MISSION WHEN JAMES IS DONE  
         rospy.Subscriber('/turtlebot_mission/path_goal', Path, self.updatePath)
@@ -174,7 +174,7 @@ class Controller:
 
         #control law
         
-        k1=2.
+        k1=1
         # if p< self.path_tresh*2:
         #     k1=1 #keep from slowing towards the end
         k2=.7

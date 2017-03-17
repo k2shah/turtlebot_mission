@@ -129,6 +129,9 @@ class Supervisor:
             data.data = [2,0,0]
             self.override_pub.publish(data)
 
+            # reset to redo autonomous mode
+            self.tag_index = -1
+
             self.curr_cmd = ""
             self.state = "exploit"
 
@@ -213,22 +216,21 @@ class Supervisor:
 
                 dist = np.sqrt((self.pose[0]-wp.pose.position.x)**2 + (self.pose[1]-wp.pose.position.y)**2)
 
-                #rospy.logwarn("current tag: %s, dist to tag: %s",self.tag_visit_order[self.tag_index],dist)
+                #rospy.logwarn("curre nt tag: %s, dist to tag: %s",self.tag_visit_order[self.tag_index],dist)
                 if dist <= self.tag_dist_thresh:
                     self.tag_index += 1
 
-                    if self.tag_index > len(self.tag_visit_order):
-                        rospy.logwarn("mission complete!")
-                        self.state = "explore"
-                        break
+                    if self.tag_index >= len(self.tag_visit_order):
+                        rospy.logwarn("mission complete!")   
+                        self.state = "disabled"    
+                        break   
 
-                    wp = self.waypoint_locations[self.tag_visit_order[self.tag_index]]
-
+ 
                     rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
                     data = Float32MultiArray()
                     data.data = [wp.pose.position.x, wp.pose.position.y, 0]
                     self.nav_goal_exploit_pub.publish(data)
-
+ 
 
             # disabled motors
             elif self.state == "disabled":
