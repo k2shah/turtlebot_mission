@@ -211,24 +211,27 @@ class Supervisor:
 
                     rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
                     data = Float32MultiArray()
-                    data.data = [wp.pose.position.x, wp.pose.position.y, 0]
+                    #data.data = [wp.pose.position.x, wp.pose.position.y, 0]
+                    data.data = pose_to_xyth(wp)
                     self.nav_goal_exploit_pub.publish(data)
 
-                dist = np.sqrt((self.pose[0]-wp.pose.position.x)**2 + (self.pose[1]-wp.pose.position.y)**2)
+                wpx, wpy, wpth = pose_to_xyth(wp)
+                dist = np.sqrt((self.pose[0]-wpx)**2 + (self.pose[1]-wpy)**2)
 
-                #rospy.logwarn("curre nt tag: %s, dist to tag: %s",self.tag_visit_order[self.tag_index],dist)
+                #rospy.logwarn("current tag: %s, dist to tag: %s",self.tag_visit_order[self.tag_index],dist)
                 if dist <= self.tag_dist_thresh:
                     self.tag_index += 1
-
+                    
                     if self.tag_index >= len(self.tag_visit_order):
                         rospy.logwarn("mission complete!")   
                         self.state = "disabled"    
                         break   
 
- 
+                    wp = self.waypoint_locations[self.tag_visit_order[self.tag_index]]
                     rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
                     data = Float32MultiArray()
-                    data.data = [wp.pose.position.x, wp.pose.position.y, 0]
+                    #data.data = [wp.pose.position.x, wp.pose.position.y, 0]
+                    data.data = pose_to_xyth(wp)
                     self.nav_goal_exploit_pub.publish(data)
  
 
