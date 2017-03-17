@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import Int32MultiArray, Float32MultiArray, String
+from std_msgs.msg import Int32MultiArray, Float32MultiArray, String, Bool
 from geometry_msgs.msg import PoseStamped
 import tf
 import numpy as np
@@ -30,6 +30,8 @@ class Supervisor:
 
         self.override_pub = rospy.Publisher('/turtlebot_mission/override', Float32MultiArray, queue_size=10)
         self.verbose_pub = rospy.Publisher('/turtlebot_mission/verbose', String, queue_size=10)
+
+        self.success_pub = rospy.Publisher('/success', Bool, queue_size=10)
         
         self.trans_listener = tf.TransformListener() # to get pose information
 
@@ -223,7 +225,8 @@ class Supervisor:
                     self.tag_index += 1
                     
                     if self.tag_index >= len(self.tag_visit_order):
-                        rospy.logwarn("mission complete!")   
+                        rospy.logwarn("mission complete!") 
+                        self.success_pub.publish(True)  
                         self.state = "disabled"   
 
                     else:
