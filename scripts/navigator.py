@@ -51,7 +51,7 @@ class Navigator:
                                                   self.map_height,
                                                   self.map_origin[0],
                                                   self.map_origin[1],
-                                                  int(self.plan_resolution / self.map_resolution) * 2,
+                                                  int(self.plan_resolution / self.map_resolution) * 4,
                                                   self.map_probs)
 
     def nav_sp_callback(self,msg):

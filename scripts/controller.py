@@ -174,7 +174,7 @@ class Controller:
 
         #control law
         
-        k1=1.2
+        k1=2.
         # if p< self.path_tresh*2:
         #     k1=1 #keep from slowing towards the end
         k2=.7
