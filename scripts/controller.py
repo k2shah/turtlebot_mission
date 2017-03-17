@@ -21,7 +21,7 @@ class Controller:
         self.path_tresh = .1 #dist to target the next wp
         self.spin_gain  = 1
         self.spin_rate = 2
-        self.pathSplit = 5
+        self.pathSplit = 3
 
         # CHANGE TO MISSION WHEN JAMES IS DONE  
         rospy.Subscriber('/turtlebot_mission/path_goal', Path, self.updatePath)
@@ -32,7 +32,9 @@ class Controller:
         self.x = 0.0
         self.y = 0.0
         self.th = 0.0
-        self.updateState()
+        # while not self.updateState():
+        #     rospy.logwarn("I AM LOST")
+        #     pass
 
         self.x_g=self.x
         self.y_g=self.y
@@ -111,10 +113,11 @@ class Controller:
             self.x=translation[0]
             self.y=translation[1]
             self.th = euler[2]
+            return True
             #print("\nstate from translation\n")
             #print(self.x, self.y, self.theta)
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            pass
+            return False
 
 
         
@@ -146,7 +149,7 @@ class Controller:
         if  p<self.path_tresh: #get get point if close
             if len(self.path)==0 :
                 cmd.linear.x=0 #shut speed down
-                cmd.angular.z= self.spin_gain*(th_g-th) #P control to angle
+                cmd.angular.z= 0 #self.spin_gain*(th_g-th) #P control to angle
                 return cmd
             else:
                 self.x_g, self.y_g, self.th_g= self.pathParse()
@@ -171,11 +174,11 @@ class Controller:
 
         #control law
         
-        k1=1.
+        k1=1.2
         # if p< self.path_tresh*2:
         #     k1=1 #keep from slowing towards the end
-        k2=.8
-        k3=.8
+        k2=.7
+        k3=.7
 
         V=k1*p*np.cos(a)
         om=k2*a+k1*np.sinc(a/np.pi)*np.cos(a)*(a+k3*d)

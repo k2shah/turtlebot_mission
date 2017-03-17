@@ -32,6 +32,7 @@ class Navigator:
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("map_metadata", MapMetaData, self.map_md_callback)
         rospy.Subscriber("/turtlebot_mission/nav_goal_explore", Float32MultiArray, self.nav_sp_callback)
+        rospy.Subscriber("/turtlebot_mission/nav_goal_exploit", Float32MultiArray, self.nav_sp_callback)
 
         self.pose_sp_pub = rospy.Publisher('/turtlebot_mission/position_goal', Float32MultiArray, queue_size=10)
         self.nav_path_pub = rospy.Publisher('/turtlebot_mission/path_goal', Path, queue_size=10)
