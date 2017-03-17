@@ -210,7 +210,7 @@ class Supervisor:
                     data.data = [wp.pose.position.x, wp.pose.position.y, 0]
                     self.nav_goal_exploit_pub.publish(data)
 
-                dist = np.sqrt((self.pose[0]-wp.pose.position.x)**2 + (self.pose[1]-wp.pose.position.y**2))
+                dist = np.sqrt((self.pose[0]-wp.pose.position.x)**2 + (self.pose[1]-wp.pose.position.y)**2)
 
                 rospy.logwarn("current tag: %s, dist to tag: %s",self.tag_visit_order[self.tag_index],dist)
 
