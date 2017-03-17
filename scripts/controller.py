@@ -19,7 +19,7 @@ class Controller:
 
         #TUNNING PARAMS
         self.path_tresh = .1 #dist to target the next wp
-        self.spin_gain  = 1
+        self.spin_gain  = .5
         self.spin_rate = 2
         self.pathSplit = 3
 
@@ -149,7 +149,7 @@ class Controller:
         if  p<self.path_tresh: #get get point if close
             if len(self.path)==0 :
                 cmd.linear.x=0 #shut speed down
-                cmd.angular.z= 0 #self.spin_gain*(th_g-th) #P control to angle
+                cmd.angular.z= self.spin_gain*(th_g-th) #P control to angle
                 return cmd
             else:
                 self.x_g, self.y_g, self.th_g= self.pathParse()
