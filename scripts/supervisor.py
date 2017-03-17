@@ -224,16 +224,16 @@ class Supervisor:
                     
                     if self.tag_index >= len(self.tag_visit_order):
                         rospy.logwarn("mission complete!")   
-                        self.state = "disabled"    
-                        break   
-
-                    wp = self.waypoint_locations[self.tag_visit_order[self.tag_index]]
-                    rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
-                    data = Float32MultiArray()
-                    #data.data = [wp.pose.position.x, wp.pose.position.y, 0]
-                    data.data = pose_to_xyth(wp.pose)
-                    self.nav_goal_exploit_pub.publish(data)
- 
+                        self.state = "disabled"   
+                         
+                    else:
+                        wp = self.waypoint_locations[self.tag_visit_order[self.tag_index]]
+                        rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
+                        data = Float32MultiArray()
+                        #data.data = [wp.pose.position.x, wp.pose.position.y, 0]
+                        data.data = pose_to_xyth(wp.pose)
+                        self.nav_goal_exploit_pub.publish(data)
+     
 
             # disabled motors
             elif self.state == "disabled":
