@@ -29,13 +29,22 @@ class Navigator:
 
         self.trans_listener = tf.TransformListener()
 
+        self.navState=1 #0 for explore, 1 for bypass to controller. 2 for exploit 
+
         rospy.Subscriber("map", OccupancyGrid, self.map_callback)
         rospy.Subscriber("map_metadata", MapMetaData, self.map_md_callback)
-        rospy.Subscriber("/turtlebot_mission/nav_goal_explore", Float32MultiArray, self.nav_sp_callback)
-        rospy.Subscriber("/turtlebot_mission/nav_goal_exploit", Float32MultiArray, self.nav_sp_callback)
+        #mission topics
+        rospy.Subscriber("/turtlebot_mission/nav_goal_explore", Float32MultiArray, self.nav_explore_sp_callback)
+        rospy.Subscriber("/turtlebot_mission/nav_goal_exploit", Float32MultiArray, self.nav_exploit_sp_callback)
+        rospy.Subscriber('/turtlebot_mission/override', Float32MultiArray, self.override)
 
+        #path goal and position goal topics
         self.pose_sp_pub = rospy.Publisher('/turtlebot_mission/position_goal', Float32MultiArray, queue_size=10)
         self.nav_path_pub = rospy.Publisher('/turtlebot_mission/path_goal', Path, queue_size=10)
+
+    def override(self, msg):
+        #get gets called when override is published 
+        self.navState= msg.data[0] #override state 
 
     def map_md_callback(self,msg):
         self.map_width = msg.width
@@ -54,9 +63,15 @@ class Navigator:
                                                   int(self.plan_resolution / self.map_resolution) * 6,
                                                   self.map_probs)
 
-    def nav_sp_callback(self,msg):
-        self.nav_sp = (msg.data[0],msg.data[1],msg.data[2])
-        self.send_pose_sp()
+    def nav_explore_sp_callback(self,msg):
+        if self.navState==0: #explore the world 
+            self.nav_sp = (msg.data[0],msg.data[1],msg.data[2])
+            self.send_pose_sp()
+
+    def nav_exploit_sp_callback(self,msg):
+        if self.navState==2: #take the world
+            self.nav_sp = (msg.data[0],msg.data[1],msg.data[2])
+            self.send_pose_sp()
 
     def buildPath(self, path, ref_tf='map'):
         path_msg = Path()

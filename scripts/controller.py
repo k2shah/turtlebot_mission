@@ -121,7 +121,7 @@ class Controller:
 
 
         
-    def get_ctrl_output(self):
+    def ctrl_output(self):
         # use self.x self.y and self.theta to compute the right control input here
         # cmd_x_dot = 0.0 # forward velocity
         # cmd_theta_dot = 0.0
@@ -203,10 +203,10 @@ class Controller:
         rate = rospy.Rate(10) # 10 Hz
         while not rospy.is_shutdown():
             #cmd is a Twist
-            if self.cmdState==0: #autonomous mode
-                cmd = self.get_ctrl_output() 
-            else:
-                cmd=self.override_output()
+            if self.cmdState!=1: #follow path
+                cmd = self.ctrl_output() 
+            else: #bypass to motors
+                cmd = self.override_output()
 
 
 
