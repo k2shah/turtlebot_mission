@@ -160,11 +160,11 @@ class Supervisor:
                     if el in self.tag_visit_order:
                         num_found += 1
 
-            data = 'waypoints found: %s\nwaypoints progress: %s/%s\nFSM state: %s\ncurrent pose: %s' %(self.waypoint_locations.keys(),num_found,num_total,self.state,self.pose)
+            data = 'waypoints found: %s\nwaypoints progress: %s/%s %s\nFSM state: %s\ncurrent pose: %s' %(self.waypoint_locations.keys(),num_found,num_total,self.tag_visit_order,self.state,self.pose)
             self.verbose_pub.publish(data)
 
             # starting state
-            if self.state == "init":
+            if self.state == "init":    
                 self.state = "explore"
 
             # human directed exploration
@@ -225,7 +225,7 @@ class Supervisor:
                     if self.tag_index >= len(self.tag_visit_order):
                         rospy.logwarn("mission complete!")   
                         self.state = "disabled"   
-                         
+
                     else:
                         wp = self.waypoint_locations[self.tag_visit_order[self.tag_index]]
                         rospy.logwarn("heading to tag %s",self.tag_visit_order[self.tag_index])
